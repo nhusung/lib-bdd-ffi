@@ -231,3 +231,10 @@ pub unsafe extern "C" fn bdd_nodecount(f: bdd_t) -> usize {
 pub unsafe extern "C" fn bdd_satcount(f: bdd_t) -> f64 {
     unsafe { &**f._p }.cardinality()
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn bdd_eq(f: bdd_t, g: bdd_t) -> bool {
+    let f = unsafe { &**f._p };
+    let g = unsafe { &**g._p };
+    f == g
+}
