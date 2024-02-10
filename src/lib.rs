@@ -7,6 +7,45 @@ use biodivine_lib_bdd::Bdd;
 use biodivine_lib_bdd::BddVariable;
 use biodivine_lib_bdd::BddVariableSet;
 
+// Utils
+#[repr(i8)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+enum OptBool {
+    /// Don't care
+    None = -1,
+    False = 0,
+    True = 1,
+}
+
+/// Boolean assignment
+///
+/// `data` is a pointer to `len` values. A value can be either 0 (false), 1
+/// (true), or -1 (don't care).
+#[repr(C)]
+pub struct bdd_assignment_t {
+    data: *mut i8,
+    len: usize,
+}
+
+/// Free the given assignment
+///
+/// To uphold Rust's invariants, all values in the assignment must be 0, 1, or
+/// -1.
+#[no_mangle]
+pub unsafe extern "C" fn bdd_assignment_free(assignment: bdd_assignment_t) {
+    if !assignment.data.is_null() {
+        drop(unsafe {
+            Vec::from_raw_parts(
+                assignment.data as *mut OptBool,
+                assignment.len,
+                assignment.len,
+            )
+        })
+    }
+}
+
+// BDD manaager & BDD functions
+
 struct Manager {
     var_set: BddVariableSet,
     rc: usize,
@@ -178,6 +217,38 @@ pub unsafe extern "C" fn bdd_or(f: bdd_t, g: bdd_t) -> bdd_t {
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn bdd_xor(f: bdd_t, g: bdd_t) -> bdd_t {
+    let f = unsafe { &*f._p };
+    let g = unsafe { &*g._p };
+    let bdd = f.xor(g);
+    unsafe { bdd_t::from_bdd(bdd, f.manager) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bdd_imp(f: bdd_t, g: bdd_t) -> bdd_t {
+    let f = unsafe { &*f._p };
+    let g = unsafe { &*g._p };
+    let bdd = f.imp(g);
+    unsafe { bdd_t::from_bdd(bdd, f.manager) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bdd_iff(f: bdd_t, g: bdd_t) -> bdd_t {
+    let f = unsafe { &*f._p };
+    let g = unsafe { &*g._p };
+    let bdd = f.iff(g);
+    unsafe { bdd_t::from_bdd(bdd, f.manager) }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bdd_and_not(f: bdd_t, g: bdd_t) -> bdd_t {
+    let f = unsafe { &*f._p };
+    let g = unsafe { &*g._p };
+    let bdd = f.and_not(g);
+    unsafe { bdd_t::from_bdd(bdd, f.manager) }
+}
+
+#[no_mangle]
 pub unsafe extern "C" fn bdd_ite(f: bdd_t, g: bdd_t, h: bdd_t) -> bdd_t {
     let f = unsafe { &*f._p };
     let g = unsafe { &*g._p };
@@ -237,4 +308,35 @@ pub unsafe extern "C" fn bdd_eq(f: bdd_t, g: bdd_t) -> bool {
     let f = unsafe { &**f._p };
     let g = unsafe { &**g._p };
     f == g
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bdd_pickcube(f: bdd_t) -> bdd_assignment_t {
+    let f = unsafe { &**f._p };
+    if f.is_false() {
+        return bdd_assignment_t {
+            data: std::ptr::null_mut(),
+            len: 0,
+        };
+    }
+    let mut assignment = vec![OptBool::None; f.num_vars() as usize];
+    let mut p = f.root_pointer();
+    while !p.is_one() {
+        let c = f.low_link_of(p);
+        if !c.is_zero() {
+            assignment[f.var_of(p).to_index()] = OptBool::False;
+            p = c;
+        } else {
+            let c = f.high_link_of(p);
+            debug_assert!(!c.is_zero());
+            assignment[f.var_of(p).to_index()] = OptBool::True;
+            p = c;
+        }
+    }
+
+    assignment.shrink_to_fit();
+    let len = assignment.len();
+    let data = assignment.as_mut_ptr() as *mut i8;
+    std::mem::forget(assignment);
+    bdd_assignment_t { data, len }
 }
