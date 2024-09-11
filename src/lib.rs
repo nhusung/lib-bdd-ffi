@@ -3,6 +3,7 @@
 
 use std::collections::HashMap;
 use std::ops::Deref;
+use std::path::Path;
 
 use biodivine_lib_bdd::Bdd;
 use biodivine_lib_bdd::BddVariable;
@@ -107,7 +108,7 @@ impl Deref for RcBdd {
 #[derive(Clone, Copy)]
 pub struct VarPair {
     first: u16,
-    second: u16
+    second: u16,
 }
 
 #[repr(C)]
@@ -302,7 +303,12 @@ pub unsafe extern "C" fn bdd_forall(f: bdd_t, vars: *const u16, num_vars: usize)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bdd_and_exists(f: bdd_t, g: bdd_t, vars: *const u16, num_vars: usize) -> bdd_t {
+pub unsafe extern "C" fn bdd_and_exists(
+    f: bdd_t,
+    g: bdd_t,
+    vars: *const u16,
+    num_vars: usize,
+) -> bdd_t {
     let f = unsafe { &*f._p };
     let g = unsafe { &*g._p };
     let vars: Vec<BddVariable> = unsafe { &*std::ptr::slice_from_raw_parts(vars, num_vars) }
@@ -314,11 +320,16 @@ pub unsafe extern "C" fn bdd_and_exists(f: bdd_t, g: bdd_t, vars: *const u16, nu
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bdd_or_exists(f: bdd_t, g: bdd_t, vars: *const u16, num_vars: usize) -> bdd_t {
+pub unsafe extern "C" fn bdd_or_exists(
+    f: bdd_t,
+    g: bdd_t,
+    vars: *const u16,
+    num_vars: usize,
+) -> bdd_t {
     let f = unsafe { &*f._p };
     let g = unsafe { &*g._p };
     let vars: Vec<BddVariable> = unsafe { &*std::ptr::slice_from_raw_parts(vars, num_vars) }
-    .iter()
+        .iter()
         .map(|&v| BddVariable::from_index(v as usize))
         .collect();
     let bdd = Bdd::binary_op_with_exists(&f, &g, biodivine_lib_bdd::op_function::or, &vars);
@@ -326,11 +337,16 @@ pub unsafe extern "C" fn bdd_or_exists(f: bdd_t, g: bdd_t, vars: *const u16, num
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bdd_and_forall(f: bdd_t, g: bdd_t, vars: *const u16, num_vars: usize) -> bdd_t {
+pub unsafe extern "C" fn bdd_and_forall(
+    f: bdd_t,
+    g: bdd_t,
+    vars: *const u16,
+    num_vars: usize,
+) -> bdd_t {
     let f = unsafe { &*f._p };
     let g = unsafe { &*g._p };
     let vars: Vec<BddVariable> = unsafe { &*std::ptr::slice_from_raw_parts(vars, num_vars) }
-    .iter()
+        .iter()
         .map(|&v| BddVariable::from_index(v as usize))
         .collect();
     let bdd = Bdd::binary_op_with_for_all(&f, &g, biodivine_lib_bdd::op_function::and, &vars);
@@ -338,7 +354,12 @@ pub unsafe extern "C" fn bdd_and_forall(f: bdd_t, g: bdd_t, vars: *const u16, nu
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bdd_or_forall(f: bdd_t, g: bdd_t, vars: *const u16, num_vars: usize) -> bdd_t {
+pub unsafe extern "C" fn bdd_or_forall(
+    f: bdd_t,
+    g: bdd_t,
+    vars: *const u16,
+    num_vars: usize,
+) -> bdd_t {
     let f = unsafe { &*f._p };
     let g = unsafe { &*g._p };
     let vars: Vec<BddVariable> = unsafe { &*std::ptr::slice_from_raw_parts(vars, num_vars) }
@@ -353,17 +374,32 @@ pub unsafe extern "C" fn bdd_or_forall(f: bdd_t, g: bdd_t, vars: *const u16, num
 pub unsafe extern "C" fn bdd_rename_variable(f: bdd_t, x: u16, y: u16) -> bdd_t {
     let f = unsafe { &*f._p };
     let mut g = f.bdd.clone();
-    unsafe { g.rename_variable(BddVariable::from_index(x as usize), BddVariable::from_index(y as usize)) };
+    unsafe {
+        g.rename_variable(
+            BddVariable::from_index(x as usize),
+            BddVariable::from_index(y as usize),
+        )
+    };
     unsafe { bdd_t::from_bdd(g, f.manager) }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bdd_rename_variables(f: bdd_t, var_pairs: *const VarPair, num_pairs: usize) -> bdd_t {
+pub unsafe extern "C" fn bdd_rename_variables(
+    f: bdd_t,
+    var_pairs: *const VarPair,
+    num_pairs: usize,
+) -> bdd_t {
     let f = unsafe { &*f._p };
-    let var_map: HashMap<BddVariable, BddVariable> = unsafe { &*std::ptr::slice_from_raw_parts(var_pairs, num_pairs) }
-        .iter()
-        .map(|p| (BddVariable::from_index(p.first as usize), BddVariable::from_index(p.second as usize)))
-        .collect();
+    let var_map: HashMap<BddVariable, BddVariable> =
+        unsafe { &*std::ptr::slice_from_raw_parts(var_pairs, num_pairs) }
+            .iter()
+            .map(|p| {
+                (
+                    BddVariable::from_index(p.first as usize),
+                    BddVariable::from_index(p.second as usize),
+                )
+            })
+            .collect();
     let mut g = f.bdd.clone();
     unsafe { g.rename_variables(&var_map) };
     unsafe { bdd_t::from_bdd(g, f.manager) }
@@ -415,4 +451,13 @@ pub unsafe extern "C" fn bdd_pickcube(f: bdd_t) -> bdd_assignment_t {
     let data = assignment.as_mut_ptr() as *mut i8;
     std::mem::forget(assignment);
     bdd_assignment_t { data, len }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn bdd_writebytes(f: bdd_t, path: *const std::ffi::c_char) -> () {
+    let f = unsafe { &**f._p };
+    let f_bytes = f.to_bytes();
+
+    let path_cstr = unsafe { std::ffi::CStr::from_ptr(path) };
+    std::fs::write(Path::new(path_cstr.to_str().unwrap()), f_bytes).unwrap();
 }
