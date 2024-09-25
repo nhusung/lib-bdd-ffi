@@ -454,7 +454,7 @@ pub unsafe extern "C" fn bdd_pickcube(f: bdd_t) -> bdd_assignment_t {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bdd_writebytes(f: bdd_t, path: *const std::ffi::c_char) -> () {
+pub unsafe extern "C" fn bdd_save(f: bdd_t, path: *const std::ffi::c_char) -> () {
     let f = unsafe { &**f._p };
     let f_bytes = f.to_bytes();
 
