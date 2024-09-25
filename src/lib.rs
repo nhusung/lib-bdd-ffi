@@ -461,3 +461,24 @@ pub unsafe extern "C" fn bdd_save(f: bdd_t, path: *const std::ffi::c_char) -> ()
     let path_cstr = unsafe { std::ffi::CStr::from_ptr(path) };
     std::fs::write(Path::new(path_cstr.to_str().unwrap()), f_bytes).unwrap();
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn bdd_load(manager: manager_t, path: *const std::ffi::c_char) -> bdd_t {
+    // Taken from Samuel Pastva and Thomas Henzinger's source code in 'util.rs'
+    // in their artifact: https://zenodo.org/records/7958052
+
+    let path_cstr = unsafe { std::ffi::CStr::from_ptr(path) };
+    let file = std::fs::File::open(path_cstr.to_str().unwrap()).unwrap();
+
+    // Each chunk is 10 bytes large, so we use a multiple of 10. In older
+    // versions of LibBDD, not using a multiple of 10 even caused errors:
+    // https://github.com/sybila/biodivine-lib-bdd/issues/34
+    let mut file = std::io::BufReader::with_capacity(1024 * 10, file);
+    let mut f = Bdd::read_as_bytes(&mut file).unwrap();
+
+    // Ensure this `Bdd` is compatible with any other loaded using this very
+    // function (i.e., it tracks the same number of variables).
+    unsafe { f.set_num_vars(u16::MAX) };
+
+    unsafe { bdd_t::from_bdd(f, manager._p) }
+}
