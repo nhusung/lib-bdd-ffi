@@ -1,4 +1,5 @@
 #![allow(non_camel_case_types)]
+#![allow(clippy::missing_safety_doc)]
 #![deny(unsafe_op_in_unsafe_fn)]
 
 use std::collections::HashMap;
@@ -46,7 +47,7 @@ pub unsafe extern "C" fn bdd_assignment_free(assignment: bdd_assignment_t) {
     }
 }
 
-// BDD manaager & BDD functions
+// BDD manager & BDD functions
 
 struct Manager {
     var_set: BddVariableSet,
@@ -315,7 +316,7 @@ pub unsafe extern "C" fn bdd_and_exists(
         .iter()
         .map(|&v| BddVariable::from_index(v as usize))
         .collect();
-    let bdd = Bdd::binary_op_with_exists(&f, &g, biodivine_lib_bdd::op_function::and, &vars);
+    let bdd = Bdd::binary_op_with_exists(f, g, biodivine_lib_bdd::op_function::and, &vars);
     unsafe { bdd_t::from_bdd(bdd, f.manager) }
 }
 
@@ -332,7 +333,7 @@ pub unsafe extern "C" fn bdd_or_exists(
         .iter()
         .map(|&v| BddVariable::from_index(v as usize))
         .collect();
-    let bdd = Bdd::binary_op_with_exists(&f, &g, biodivine_lib_bdd::op_function::or, &vars);
+    let bdd = Bdd::binary_op_with_exists(f, g, biodivine_lib_bdd::op_function::or, &vars);
     unsafe { bdd_t::from_bdd(bdd, f.manager) }
 }
 
@@ -349,7 +350,7 @@ pub unsafe extern "C" fn bdd_and_forall(
         .iter()
         .map(|&v| BddVariable::from_index(v as usize))
         .collect();
-    let bdd = Bdd::binary_op_with_for_all(&f, &g, biodivine_lib_bdd::op_function::and, &vars);
+    let bdd = Bdd::binary_op_with_for_all(f, g, biodivine_lib_bdd::op_function::and, &vars);
     unsafe { bdd_t::from_bdd(bdd, f.manager) }
 }
 
@@ -366,7 +367,7 @@ pub unsafe extern "C" fn bdd_or_forall(
         .iter()
         .map(|&v| BddVariable::from_index(v as usize))
         .collect();
-    let bdd = Bdd::binary_op_with_for_all(&f, &g, biodivine_lib_bdd::op_function::or, &vars);
+    let bdd = Bdd::binary_op_with_for_all(f, g, biodivine_lib_bdd::op_function::or, &vars);
     unsafe { bdd_t::from_bdd(bdd, f.manager) }
 }
 
@@ -407,12 +408,12 @@ pub unsafe extern "C" fn bdd_rename_variables(
 
 #[no_mangle]
 pub unsafe extern "C" fn bdd_nodecount(f: bdd_t) -> usize {
-    unsafe { &**f._p }.size()
+    unsafe { &*f._p }.size()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn bdd_satcount(f: bdd_t) -> f64 {
-    unsafe { &**f._p }.cardinality()
+    unsafe { &*f._p }.cardinality()
 }
 
 #[no_mangle]
@@ -454,7 +455,7 @@ pub unsafe extern "C" fn bdd_pickcube(f: bdd_t) -> bdd_assignment_t {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn bdd_save(f: bdd_t, path: *const std::ffi::c_char) -> () {
+pub unsafe extern "C" fn bdd_save(f: bdd_t, path: *const std::ffi::c_char) {
     let f = unsafe { &**f._p };
     let f_bytes = f.to_bytes();
 
