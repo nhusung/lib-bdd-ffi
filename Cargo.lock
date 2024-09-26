@@ -10,9 +10,9 @@ checksum = "0c4b4d0bd25bd0b74681c0ad21497610ce1b7c91b1022cd21c80c6fbdd9476b0"
 
 [[package]]
 name = "biodivine-lib-bdd"
-version = "0.5.19"
+version = "0.5.22"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b898f282fba66222890fea4d58d7e34487da9dcd23e6feef7dfc60b0e2f1945f"
+checksum = "1e46bef4a73ba1792ef3123fb88df667dc2b8e3316771901961205ea306c4f9b"
 dependencies = [
  "fxhash",
  "num-bigint",
@@ -60,9 +60,9 @@ dependencies = [
 
 [[package]]
 name = "libc"
-version = "0.2.158"
+version = "0.2.159"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d8adc4bb1803a324070e64a98ae98f38934d91957a99cfb3a43dcbc01bc56439"
+checksum = "561d97a539a36e26a9a5fad1ea11a3039a67714694aaa379433e580854bc3dc5"
 
 [[package]]
 name = "num-bigint"
